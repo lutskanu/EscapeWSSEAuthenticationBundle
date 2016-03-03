@@ -101,21 +101,21 @@ class Provider implements AuthenticationProviderInterface
             throw new BadCredentialsException('Incorrectly formatted "created" in token.');
         }
 
-        //check whether timestamp is not in the future
-        if ($this->isTokenFromFuture($created)) {
-            throw new BadCredentialsException('Future token detected.');
-        }
-
-        //expire timestamp after specified lifetime
-        if (strtotime($this->getCurrentTimeWithOffset()) - strtotime($created) > $this->lifetime) {
-            throw new CredentialsExpiredException('Token has expired.');
-        }
-
-        //validate that nonce is unique within specified lifetime
-        //if it is not, this could be a replay attack
-        if ($this->nonceCache->contains($nonce)) {
-            throw new NonceExpiredException('Previously used nonce detected.');
-        }
+//        //check whether timestamp is not in the future
+//        if ($this->isTokenFromFuture($created)) {
+//            throw new BadCredentialsException('Future token detected.');
+//        }
+//
+//        //expire timestamp after specified lifetime
+//        if (strtotime($this->getCurrentTimeWithOffset()) - strtotime($created) > $this->lifetime) {
+//            throw new CredentialsExpiredException('Token has expired.');
+//        }
+//
+//        //validate that nonce is unique within specified lifetime
+//        //if it is not, this could be a replay attack
+//        if ($this->nonceCache->contains($nonce)) {
+//            throw new NonceExpiredException('Previously used nonce detected.');
+//        }
 
         $this->nonceCache->save($nonce, strtotime($this->getCurrentTimeWithOffset()), $this->lifetime);
 
