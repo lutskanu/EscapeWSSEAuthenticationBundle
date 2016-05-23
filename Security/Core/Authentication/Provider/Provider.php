@@ -39,7 +39,6 @@ class Provider implements AuthenticationProviderInterface
      * @param string $dateFormat The date format
      * @param int $timeOffset
      */
->>>>>>> upstream/master
     public function __construct(
         UserCheckerInterface $userChecker,
         UserProviderInterface $userProvider,
