@@ -3,6 +3,7 @@
 namespace Escape\WSSEAuthenticationBundle\Security\Core\Authentication\Provider;
 
 use Symfony\Component\Security\Core\Authentication\Provider\AuthenticationProviderInterface;
+use Symfony\Component\Security\Core\User\UserCheckerInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Core\Encoder\PasswordEncoderInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
@@ -17,6 +18,7 @@ use Doctrine\Common\Cache\Cache;
 
 class Provider implements AuthenticationProviderInterface
 {
+    private $userChecker;
     private $userProvider;
     private $providerKey;
     private $encoder;
@@ -28,14 +30,18 @@ class Provider implements AuthenticationProviderInterface
     /**
      * Constructor.
      *
+     * @param UserCheckerInterface $userChecker A UserChecketerInterface instance
      * @param UserProviderInterface $userProvider An UserProviderInterface instance
+     * @param string $providerKey The provider key
      * @param PasswordEncoderInterface $encoder A PasswordEncoderInterface instance
      * @param Cache $nonceCache The nonce cache
      * @param int $lifetime The lifetime
      * @param string $dateFormat The date format
      * @param int $timeOffset
      */
+>>>>>>> upstream/master
     public function __construct(
+        UserCheckerInterface $userChecker,
         UserProviderInterface $userProvider,
         $providerKey,
         PasswordEncoderInterface $encoder,
@@ -48,6 +54,7 @@ class Provider implements AuthenticationProviderInterface
             throw new \InvalidArgumentException('$providerKey must not be empty.');
         }
 
+        $this->userChecker = $userChecker;
         $this->userProvider = $userProvider;
         $this->providerKey = $providerKey;
         $this->encoder = $encoder;
@@ -61,24 +68,24 @@ class Provider implements AuthenticationProviderInterface
     {
         $user = $this->userProvider->loadUserByUsername($token->getUsername());
 
-        if (
-            $user &&
-            $this->validateDigest(
+        if ($user) {
+            if ($this->validateDigest(
                 $token->getCredentials(),
                 $token->getAttribute('nonce'),
                 $token->getAttribute('created'),
                 $this->getSecret($user),
                 $this->getSalt($user)
             )
-        ) {
-            $authenticatedToken = new Token(
-                $user,
-                $token->getCredentials(),
-                $this->providerKey,
-                $user->getRoles()
-            );
+            ) {
+                $authenticatedToken = new Token(
+                    $user,
+                    $token->getCredentials(),
+                    $this->providerKey,
+                    $user->getRoles()
+                );
 
-            return $authenticatedToken;
+                return $authenticatedToken;
+            }
         }
 
         throw new AuthenticationException('WSSE authentication failed.');
@@ -130,7 +137,11 @@ class Provider implements AuthenticationProviderInterface
             $salt
         );
 
-        return $digest === $expected;
+        if (class_exists('Symfony\Component\Security\Core\Util\StringUtils')) {
+            return \Symfony\Component\Security\Core\Util\StringUtils::equals($expected, $digest);
+        } else {
+            return hash_equals($expected, $digest);
+        }
     }
 
     protected function getCurrentTimeWithOffset()
@@ -175,6 +186,6 @@ class Provider implements AuthenticationProviderInterface
 
     public function supports(TokenInterface $token)
     {
-        return $token instanceof Token && $this->providerKey === $token->getProviderKey();
+        return $token instanceof Token && $token->hasAttribute('nonce') && $token->hasAttribute('created') && $this->providerKey === $token->getProviderKey();
     }
 }

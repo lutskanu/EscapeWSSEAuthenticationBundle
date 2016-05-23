@@ -1,4 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/escapestudios/EscapeWSSEAuthenticationBundle.png)](http://travis-ci.org/escapestudios/EscapeWSSEAuthenticationBundle)
+[![Build Status](https://secure.travis-ci.org/djoos/EscapeWSSEAuthenticationBundle.png)](http://travis-ci.org/djoos/EscapeWSSEAuthenticationBundle)
 
 ## Introduction
 
@@ -11,7 +11,7 @@ composer.json
 ```
 "require": {
     ...
-    "escapestudios/wsse-authentication-bundle": "2.3.x-dev",
+    "escapestudios/wsse-authentication-bundle": "~2.2",
     ...
 }
 ```
@@ -43,6 +43,7 @@ app/config/security.yml
 firewalls:
     wsse_secured:
         pattern:   ^/api/.*
+        stateless: true
         wsse:
             realm: "Secured with WSSE" #identifies the set of resources to which the authentication information will apply (WWW-Authenticate)
             profile: "UsernameToken" #WSSE profile (WWW-Authenticate)
