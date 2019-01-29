@@ -99,6 +99,11 @@ class Provider implements AuthenticationProviderInterface
     {
         return $user->getSalt();
     }
+    
+    protected function isTokenExpired($created)
+    {
+        return ($this->lifetime == -1) ? false : strtotime($this->getCurrentTime()) - strtotime($created) > $this->lifetime;
+    }
 
     protected function validateDigest($digest, $nonce, $created, $secret, $salt)
     {
@@ -108,18 +113,21 @@ class Provider implements AuthenticationProviderInterface
         }
 
 //        //check whether timestamp is not in the future
-//        if ($this->isTokenFromFuture($created)) {
+//        if($this->isTokenFromFuture($created))
+//        {
 //            throw new BadCredentialsException('Future token detected.');
 //        }
-//
+
 //        //expire timestamp after specified lifetime
-//        if (strtotime($this->getCurrentTimeWithOffset()) - strtotime($created) > $this->lifetime) {
+//        if($this->isTokenExpired($created))
+//        {
 //            throw new CredentialsExpiredException('Token has expired.');
 //        }
-//
+
 //        //validate that nonce is unique within specified lifetime
 //        //if it is not, this could be a replay attack
-//        if ($this->nonceCache->contains($nonce)) {
+//        if($this->nonceCache->contains($nonce))
+//        {
 //            throw new NonceExpiredException('Previously used nonce detected.');
 //        }
 
@@ -136,11 +144,7 @@ class Provider implements AuthenticationProviderInterface
             $salt
         );
 
-        if (class_exists('Symfony\Component\Security\Core\Util\StringUtils')) {
-            return \Symfony\Component\Security\Core\Util\StringUtils::equals($expected, $digest);
-        } else {
-            return hash_equals($expected, $digest);
-        }
+        return hash_equals($expected, $digest);
     }
 
     protected function getCurrentTimeWithOffset()
