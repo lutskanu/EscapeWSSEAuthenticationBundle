@@ -25,30 +25,31 @@ class Provider implements AuthenticationProviderInterface
     private $nonceCache;
     private $lifetime;
     private $dateFormat;
+    private $timeOffset;
 
     /**
      * Constructor.
      *
-     * @param UserCheckerInterface     $userChecker  A UserChecketerInterface instance
-     * @param UserProviderInterface    $userProvider An UserProviderInterface instance
-     * @param string                   $providerKey  The provider key
-     * @param PasswordEncoderInterface $encoder      A PasswordEncoderInterface instance
-     * @param Cache                    $nonceCache   The nonce cache
-     * @param int                      $lifetime     The lifetime
-     * @param string                   $dateFormat   The date format
-    */
+     * @param UserCheckerInterface $userChecker A UserChecketerInterface instance
+     * @param UserProviderInterface $userProvider An UserProviderInterface instance
+     * @param string $providerKey The provider key
+     * @param PasswordEncoderInterface $encoder A PasswordEncoderInterface instance
+     * @param Cache $nonceCache The nonce cache
+     * @param int $lifetime The lifetime
+     * @param string $dateFormat The date format
+     * @param int $timeOffset
+     */
     public function __construct(
         UserCheckerInterface $userChecker,
         UserProviderInterface $userProvider,
         $providerKey,
         PasswordEncoderInterface $encoder,
         Cache $nonceCache,
-        $lifetime=300,
-        $dateFormat='/^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/'
-    )
-    {
-        if(empty($providerKey))
-        {
+        $lifetime = 300,
+        $dateFormat = '/^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/',
+        $timeOffset = 0
+    ) {
+        if (empty($providerKey)) {
             throw new \InvalidArgumentException('$providerKey must not be empty.');
         }
 
@@ -59,27 +60,22 @@ class Provider implements AuthenticationProviderInterface
         $this->nonceCache = $nonceCache;
         $this->lifetime = $lifetime;
         $this->dateFormat = $dateFormat;
+        $this->timeOffset = $timeOffset;
     }
 
     public function authenticate(TokenInterface $token)
     {
-        if(!$this->supports($token))
-        {
-            return;
-        }
-
         $user = $this->userProvider->loadUserByUsername($token->getUsername());
 
         if ($user) {
-            $this->userChecker->checkPreAuth($user);
             if ($this->validateDigest(
                 $token->getCredentials(),
                 $token->getAttribute('nonce'),
                 $token->getAttribute('created'),
                 $this->getSecret($user),
                 $this->getSalt($user)
-            )) {
-                $this->userChecker->checkPostAuth($user);
+            )
+            ) {
                 $authenticatedToken = new Token(
                     $user,
                     $token->getCredentials(),
@@ -112,31 +108,30 @@ class Provider implements AuthenticationProviderInterface
     protected function validateDigest($digest, $nonce, $created, $secret, $salt)
     {
         //check whether timestamp is formatted correctly
-        if(!$this->isFormattedCorrectly($created))
-        {
+        if (!$this->isFormattedCorrectly($created)) {
             throw new BadCredentialsException('Incorrectly formatted "created" in token.');
         }
 
-        //check whether timestamp is not in the future
-        if($this->isTokenFromFuture($created))
-        {
-            throw new BadCredentialsException('Future token detected.');
-        }
+//        //check whether timestamp is not in the future
+//        if($this->isTokenFromFuture($created))
+//        {
+//            throw new BadCredentialsException('Future token detected.');
+//        }
 
-        //expire timestamp after specified lifetime
-        if($this->isTokenExpired($created))
-        {
-            throw new CredentialsExpiredException('Token has expired.');
-        }
+//        //expire timestamp after specified lifetime
+//        if($this->isTokenExpired($created))
+//        {
+//            throw new CredentialsExpiredException('Token has expired.');
+//        }
 
-        //validate that nonce is unique within specified lifetime
-        //if it is not, this could be a replay attack
-        if($this->nonceCache->contains($nonce))
-        {
-            throw new NonceExpiredException('Previously used nonce detected.');
-        }
+//        //validate that nonce is unique within specified lifetime
+//        //if it is not, this could be a replay attack
+//        if($this->nonceCache->contains($nonce))
+//        {
+//            throw new NonceExpiredException('Previously used nonce detected.');
+//        }
 
-        $this->nonceCache->save($nonce, strtotime($this->getCurrentTime()), $this->lifetime);
+        $this->nonceCache->save($nonce, strtotime($this->getCurrentTimeWithOffset()), $this->lifetime);
 
         //validate secret
         $expected = $this->encoder->encodePassword(
@@ -152,14 +147,14 @@ class Provider implements AuthenticationProviderInterface
         return hash_equals($expected, $digest);
     }
 
-    protected function getCurrentTime()
+    protected function getCurrentTimeWithOffset()
     {
-        return gmdate(DATE_ISO8601);
+        return gmdate(DATE_ISO8601, time() + $this->timeOffset);
     }
 
     protected function isTokenFromFuture($created)
     {
-        return strtotime($created) > strtotime($this->getCurrentTime());
+        return strtotime($created) > strtotime($this->getCurrentTimeWithOffset());
     }
 
     protected function isFormattedCorrectly($created)

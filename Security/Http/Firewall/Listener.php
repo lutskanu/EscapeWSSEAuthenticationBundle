@@ -64,13 +64,13 @@ class Listener implements ListenerInterface
         $request = $event->getRequest();
 
         //find out if the current request contains any information by which the user might be authenticated
-        if(!$request->headers->has('X-WSSE'))
+        if(!$request->headers->has('X-WSSE') && !$request->headers->has('x-wsse'))
         {
             return;
         }
 
         $ae_message = null;
-        $this->wsseHeader = $request->headers->get('X-WSSE');
+        $this->wsseHeader = $request->headers->has('X-WSSE') ? $request->headers->get('X-WSSE') : $request->headers->get('x-wsse');
         $wsseHeaderInfo = $this->parseHeader();
 
         if($wsseHeaderInfo !== false)
